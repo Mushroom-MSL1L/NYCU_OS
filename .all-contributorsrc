@@ -18,6 +18,18 @@
         "test",
         "translation"
       ]
+    },
+    {
+      "login": "Mushroom-MSL1L",
+      "name": "Lu Junyou",
+      "avatar_url": "https://avatars.githubusercontent.com/u/136601880?v=4",
+      "profile": "https://github.com/Mushroom-MSL1L",
+      "contributions": [
+        "review",
+        "ideas",
+        "doc",
+        "bug"
+      ]
     }
   ],
   "contributorsPerLine": 7,
