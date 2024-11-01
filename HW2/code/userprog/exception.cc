@@ -47,6 +47,8 @@
 //	"which" is the kind of exception.  The list of possible exceptions 
 //	is in machine.h.
 //----------------------------------------------------------------------
+void PageFaultHandler(int vpn);//forward declaration
+int Replace(int vpn);//forward declaration
 
 void
 ExceptionHandler(ExceptionType which)
@@ -54,6 +56,7 @@ ExceptionHandler(ExceptionType which)
     int type = kernel->machine->ReadRegister(2);
 	int val;
     int status, exit, threadID, programID;
+	int badVAddr;
 	DEBUG(dbgSys, "Received Exception " << which << " type: " << type << "\n");
     switch (which) {
     case SyscallException:
@@ -134,6 +137,11 @@ ExceptionHandler(ExceptionType which)
 			break;
 		}
 		break;
+	case PageFaultException:
+		cerr << "Unexpected user mode exception" << which << "\n";
+		badVAddr = kernel->machine->ReadRegister(BadVAddrReg);
+		PageFaultHandler(badVAddr / PageSize);
+		break;
 	default:
 		cerr << "Unexpected user mode exception " << (int)which << "\n";
 		break;
@@ -141,3 +149,60 @@ ExceptionHandler(ExceptionType which)
     ASSERTNOTREACHED();
 }
 
+int Replace(int vpn)
+{
+    int ppn = -1;
+	int totalPageEntry = kernel->machine->pageTableSize;
+    for (int i = 0; i < totalPageEntry; i++) // Find a page that is not dirty
+    {
+        if (i == vpn) continue; // Skip the current page
+        if (kernel->machine->pageTable[i].valid)
+        {
+            if (!kernel->machine->pageTable[i].dirty)
+            {
+				kernel->machine->pageTable[i].valid = FALSE;
+				ppn = kernel->machine->pageTable[i].physicalPage;
+                break;
+            }
+        }
+    }
+    if (ppn == -1) // If all pages are dirty, replace a random page
+    {
+        for (int i = 0; i < totalPageEntry; i++)
+        {
+            if (i == vpn)
+                continue;
+            if (kernel->machine->pageTable[i].valid)
+            {
+                kernel->machine->pageTable[i].valid = FALSE;
+				kernel->machine->pageTable[i].dirty = FALSE;
+                ppn = kernel->machine->pageTable[i].physicalPage;
+
+				char *filename = kernel->currentThread->getName();
+                OpenFile *vm = kernel->fileSystem->Open(filename);
+                vm->WriteAt(&(kernel->machine->mainMemory[ppn * PageSize]), PageSize, i * PageSize);
+                delete vm;
+                break;
+            }
+        }
+    }
+    return ppn;
+}
+
+void PageFaultHandler(int vpn)
+{
+    int ppn = Replace(vpn);
+	int physicalAddr = ppn * PageSize;
+
+    kernel->machine->pageTable[vpn].physicalPage = ppn;
+
+	char *filename = kernel->currentThread->getName();
+    OpenFile *vm = kernel->fileSystem->Open(filename); // This file is created in userprog/addrspace.cc
+    vm->ReadAt(&(kernel->machine->mainMemory[ppn * PageSize]), PageSize, vpn * PageSize);
+    delete vm; 
+
+    kernel->machine->pageTable[vpn].valid = TRUE;
+    kernel->machine->pageTable[vpn].use = FALSE;
+    kernel->machine->pageTable[vpn].dirty = FALSE;
+    kernel->machine->pageTable[vpn].readOnly = FALSE;
+}

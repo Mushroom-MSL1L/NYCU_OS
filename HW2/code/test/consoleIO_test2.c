@@ -8,7 +8,7 @@ main()
         
 		PrintInt(n);
         }
-        // Halt();
-	return 0 ;
+        //Halt();
+	return 0;
 }
 
