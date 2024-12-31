@@ -13,6 +13,11 @@
         * Adding a frame table to menage all the physical address space.
         * Managing virtual memory page table for each thread. 
         * Handling memage limit exception kernel routine. 
+* HW3 : just trace how to implement scheduling
+* HW4 : scheduling
+        * Adding new options for NashOS command line.
+        * Adding new debug mode and message.
+        * Change the preemptive Round-Robin scheduling algorithm to non-preemptive priority scheduling algorithm.
 
 ## Contributors ✨
 
